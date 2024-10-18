@@ -1,13 +1,30 @@
 package com.example.spring_security.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
+import com.example.spring_security.model.Contact;
+import com.example.spring_security.repository.ContactRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.sql.Date;
+import java.util.Random;
+
 @RestController
-@RequestMapping
+@RequiredArgsConstructor
 public class ContactController {
-    @RequestMapping("/contact")
-    public String contact() {
-        return "Contact page";
+
+    private final ContactRepository contactRepository;
+
+    @PostMapping("/contact")
+    public Contact saveContactInquiryDetails(@RequestBody Contact contact) {
+        contact.setCreateDt(new Date(System.currentTimeMillis()));
+        return contactRepository.save(contact);
+    }
+
+    public String getServiceReqNumber() {
+        Random random = new Random();
+        int ranNum = random.nextInt(999999999 - 9999) + 9999;
+        return "SR" + ranNum;
     }
 }
