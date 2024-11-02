@@ -2,7 +2,7 @@ package com.example.spring_security.config;
 
 import com.example.spring_security.exception.CustomAccessDeniedHandler;
 import com.example.spring_security.exception.CustomAuthenticationEntryPoint;
-import com.example.spring_security.filter.CsrfCookieFilter;
+import com.example.spring_security.filter.*;
 import com.example.spring_security.handler.CustomAuthenticationFailureHandler;
 import com.example.spring_security.handler.CustomAuthenticationSuccessHandler;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
@@ -49,15 +49,23 @@ public class SecurityConfig {
             cors.setAllowedOrigins(List.of("*"));
             cors.setAllowedMethods(List.of("*"));
             cors.setAllowedHeaders(List.of("*"));
+            cors.setExposedHeaders(List.of("Authorization")); // expose header Authorization tại response để client có thể đọc được
             cors.setAllowCredentials(true);
             cors.setMaxAge(3600L);
             return cors;
         }));
-        http.securityContext(config -> config.requireExplicitSave(false)); // spring security sẽ tự động lưu session sau khi xác thực
+
+        // chỉ áp dụng khi dùng JSESSION token
+//        http.securityContext(config -> config.requireExplicitSave(false)); // spring security sẽ tự động lưu  JSESSION token trong session sau khi xác thực.
+//        http.sessionManagement(config -> config
+//                .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
+//                .sessionFixation().migrateSession().
+//                invalidSessionUrl("/invalid-session").maximumSessions(1)
+//        );
+
+        // không lưu trạng thái tại session
         http.sessionManagement(config -> config
-                .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
-                .sessionFixation().migrateSession().
-                invalidSessionUrl("/invalid-session").maximumSessions(1)
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         );
         http.requiresChannel(rcc->rcc
                 .requestMatchers("/secure").requiresSecure() // only accept https with these url
@@ -83,6 +91,10 @@ public class SecurityConfig {
                         .requestMatchers("/deny").denyAll() // tất cả các request bắt đầu bằng /deny sẽ bị từ chối
                 );
         http.addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
+        http.addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class);
+        http.addFilterAfter(new AuthoritiesAfterFilter(), BasicAuthenticationFilter.class);
+        http.addFilterBefore(new TokenValidateFilter(), BasicAuthenticationFilter.class);
+        http.addFilterAfter(new TokenGenerFilter(), BasicAuthenticationFilter.class);
         http.formLogin(config -> config.loginPage("/login").permitAll()
                 .loginProcessingUrl("/custom-login")
                 .defaultSuccessUrl("/account", true)
