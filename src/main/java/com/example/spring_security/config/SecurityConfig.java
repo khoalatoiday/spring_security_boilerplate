@@ -1,5 +1,6 @@
 package com.example.spring_security.config;
 
+import com.example.spring_security.component.CustomAuthenticationProvider;
 import com.example.spring_security.exception.CustomAccessDeniedHandler;
 import com.example.spring_security.exception.CustomAuthenticationEntryPoint;
 import com.example.spring_security.filter.*;
@@ -9,10 +10,14 @@ import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.core.GrantedAuthorityDefaults;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -37,7 +42,10 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+
+
     @Bean
     @Order(SecurityProperties.BASIC_AUTH_ORDER)
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -74,21 +82,21 @@ public class SecurityConfig {
         );
         http.csrf(config -> config.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(csrfTokenRequestAttributeHandler)
-                .ignoringRequestMatchers("/csrf-disabled/**") // ignore csrf for these urls
+                .ignoringRequestMatchers("/csrf-disabled/**", "/oauth/logincustom") // ignore csrf for these urls
         ); // set cookieHttpOnly = false để đảm bảo browser có thể đọc được csrf cookie
         http.authorizeHttpRequests((requests) -> requests
                         .requestMatchers(  "oauth/current", "/myCustomer/**").authenticated() // những url phải xác thực mới được truy cập
 //                        .requestMatchers("/myAccount/**").hasAuthority("VIEW_ACCOUNT")
 //                        .requestMatchers("/myBalance/**").hasAuthority("VIEW_BALANCE")
 //                        .requestMatchers("/myLoans/**", "/myCards/**").hasAnyAuthority("VIEW_LOAN", "VIEW_FUND")
-
-                        .requestMatchers("/myAccount/**").hasAuthority("USER")
-                        .requestMatchers("/myBalance/**").hasAuthority("USER")
+                        .requestMatchers("/listAccounts/**").hasAuthority("ADMIN")
+                        .requestMatchers("/myAccount/**").hasAuthority("ADMIN")
+                        .requestMatchers("/myBalance/**").hasAuthority("ADMIN")
                         .requestMatchers("/myLoans/**", "/myCards/**").hasAnyAuthority("USER", "ADMIN")
-
-                        .requestMatchers( "/oauth/register").permitAll()  //  tất cả các request bắt đầu bằng /demo/ đều được phép truy cập
+                        .requestMatchers( "/oauth/register", "/oauth/logincustom").permitAll()  //  tất cả các request bắt đầu bằng /demo/ đều được phép truy cập
                         .requestMatchers("contact", "notices" ,"/custom-login").permitAll()
                         .requestMatchers("/deny").denyAll() // tất cả các request bắt đầu bằng /deny sẽ bị từ chối
+
                 );
         http.addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
         http.addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class);
@@ -149,5 +157,13 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+        CustomAuthenticationProvider customAuthenticationProvider = new CustomAuthenticationProvider(passwordEncoder, userDetailsService);
+        ProviderManager providerManager = new ProviderManager(customAuthenticationProvider);
+        providerManager.setEraseCredentialsAfterAuthentication(false);
+        return providerManager;
     }
 }

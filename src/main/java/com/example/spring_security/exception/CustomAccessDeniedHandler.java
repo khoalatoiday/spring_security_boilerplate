@@ -18,7 +18,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        response.setHeader("WWW-Authenticate", "Authentication failed");
+        response.setHeader("WWW-Authenticate", "Authorization failed");
         response.setContentType("application/json;charset=UTF-8");
         Exception exception = new Exception(
                 LocalDateTime.now(),

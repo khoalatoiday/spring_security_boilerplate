@@ -19,17 +19,19 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public class TokenValidateFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String jwtToken = request.getHeader(Constants.JWT_HEADER);
+        String bearerToken = request.getHeader(Constants.JWT_HEADER);
+        String token = bearerToken.substring(7, bearerToken.length());
         Environment env = getEnvironment();
         String secret = env.getProperty(Constants.SECRET_KEY, Constants.SECRET_KEY_DEFAULT_VAL);
         SecretKey secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         try {
 
-            Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(jwtToken).getPayload();
+            Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
             String username = claims.get("username", String.class);
             String authorities = claims.get("authorities", String.class);
             Authentication authentication = new UsernamePasswordAuthenticationToken(username, null,
@@ -45,6 +47,7 @@ public class TokenValidateFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        return request.getServletPath().equals("/current");
+        List list = List.of("/oauth/current", "/oauth/logincustom");
+        return list.contains(request.getServletPath());
     }
 }
